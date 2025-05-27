@@ -47,36 +47,20 @@
       background-color: #333;
     }
 
-    #volumeWarning {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(0, 0, 0, 0.9);
+    #fullscreenPrompt {
       display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      z-index: 2000;
+      display: flex;
       justify-content: center;
       align-items: center;
+      flex-direction: column;
       text-align: center;
-      z-index: 1000;
       padding: 2em;
-    }
-
-    #volumeWarning h1 {
-      color: red;
-      font-size: 2em;
-    }
-
-    #volumeWarning p {
-      font-size: 1.2em;
-      color: white;
-    }
-
-    noscript p {
-      color: white;
-      font-size: 1.2em;
-      text-align: center;
-      margin-top: 20px;
     }
   </style>
 </head>
@@ -95,12 +79,10 @@
     </video>
   </div>
 
-  <div id="volumeWarning">
-    <div>
-      <h1>🔇 Sound is Off</h1>
-      <p>Please turn up your volume or disable silent mode to continue.</p>
-      <button onclick="dismissWarning()">I’ve Turned It Up</button>
-    </div>
+  <div id="fullscreenPrompt">
+    <h2>You exited fullscreen</h2>
+    <p>For the best experience, please return to fullscreen.</p>
+    <button onclick="reEnterFullscreen()">Return to Fullscreen</button>
   </div>
 
   <noscript>
@@ -113,44 +95,55 @@
     function startRickroll() {
       const video = document.getElementById('rickVideo');
 
-      // Hide loader and show video container
+      // Hide loader, show video container
       document.getElementById('fakeLoader').style.display = 'none';
       document.getElementById('rickroll').style.display = 'block';
 
-      // Ensure playback starts at beginning
+      // Reset and unmute video
       video.currentTime = 0;
       video.muted = false;
       video.volume = 1.0;
 
-      // Web Audio boost setup
+      // Setup Web Audio API for volume boost
       try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         sourceNode = audioContext.createMediaElementSource(video);
         gainNode = audioContext.createGain();
-        gainNode.gain.value = 2.0; // Boost volume to 200%
+        gainNode.gain.value = 2.0; // 200% volume boost
         sourceNode.connect(gainNode).connect(audioContext.destination);
-      } catch (e) {
-        console.warn("Web Audio API not supported or failed:", e);
+      } catch(e) {
+        console.warn("Web Audio API error:", e);
       }
 
-      // Play video
-      video.play().catch(err => console.error("Playback failed:", err));
+      video.play().catch(e => console.error("Playback error:", e));
 
-      // Fullscreen if available
+      // Request fullscreen
       if (video.requestFullscreen) video.requestFullscreen();
       else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
 
-      // Check volume/mute after short delay
-      setTimeout(() => {
-        if (video.muted || video.volume === 0) {
-          document.getElementById('volumeWarning').style.display = 'flex';
-        }
-      }, 1000);
+      // Hide fullscreen prompt if visible
+      document.getElementById('fullscreenPrompt').style.display = 'none';
     }
 
-    function dismissWarning() {
-      document.getElementById('volumeWarning').style.display = 'none';
+    // Detect fullscreen exit
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        document.getElementById('fullscreenPrompt').style.display = 'flex';
+      }
+    });
+
+    function reEnterFullscreen() {
+      const video = document.getElementById('rickVideo');
+      document.getElementById('fullscreenPrompt').style.display = 'none';
+      if (video.requestFullscreen) video.requestFullscreen();
+      else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
     }
+
+    // Warn user before closing or leaving tab
+    window.addEventListener('beforeunload', (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    });
   </script>
 
 </body>
