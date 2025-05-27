@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Loading Content...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       margin: 0;
@@ -47,6 +47,31 @@
       background-color: #333;
     }
 
+    #volumeWarning {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      z-index: 1000;
+      padding: 2em;
+    }
+
+    #volumeWarning h1 {
+      color: red;
+      font-size: 2em;
+    }
+
+    #volumeWarning p {
+      font-size: 1.2em;
+      color: white;
+    }
+
     noscript p {
       color: white;
       font-size: 1.2em;
@@ -64,33 +89,67 @@
   </div>
 
   <div id="rickroll">
-    <video id="rickVideo" autoplay loop muted playsinline>
+    <video id="rickVideo" autoplay loop playsinline muted>
       <source src="ScreenRecording_05-27-2025 08-58-48_1 2.mp4" type="video/mp4" />
       Your browser does not support the video tag.
     </video>
   </div>
 
+  <div id="volumeWarning">
+    <div>
+      <h1>🔇 Sound is Off</h1>
+      <p>Please turn up your volume or disable silent mode to continue.</p>
+      <button onclick="dismissWarning()">I’ve Turned It Up</button>
+    </div>
+  </div>
+
   <noscript>
-    <p>
-      Please enable JavaScript to view the content.
-    </p>
+    <p>Please enable JavaScript to view the content.</p>
   </noscript>
 
   <script>
+    let audioContext, sourceNode, gainNode;
+
     function startRickroll() {
       const video = document.getElementById('rickVideo');
+
+      // Hide loader and show video container
       document.getElementById('fakeLoader').style.display = 'none';
       document.getElementById('rickroll').style.display = 'block';
 
-      video.muted = false;       // Unmute on user click
-      video.currentTime = 0;     // Restart video from beginning
-      video.play();
+      // Ensure playback starts at beginning
+      video.currentTime = 0;
+      video.muted = false;
+      video.volume = 1.0;
 
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
+      // Web Audio boost setup
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        sourceNode = audioContext.createMediaElementSource(video);
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = 2.0; // Boost volume to 200%
+        sourceNode.connect(gainNode).connect(audioContext.destination);
+      } catch (e) {
+        console.warn("Web Audio API not supported or failed:", e);
       }
+
+      // Play video
+      video.play().catch(err => console.error("Playback failed:", err));
+
+      // Fullscreen if available
+      if (video.requestFullscreen) video.requestFullscreen();
+      else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+
+      // Check volume/mute after short delay
+      setTimeout(() => {
+        if (video.muted || video.volume === 0) {
+          document.getElementById('volumeWarning').style.display = 'flex';
+        }
+      }, 1000);
+    }
+
+    function dismissWarning() {
+      document.getElementById('volumeWarning').style.display = 'none';
     }
   </script>
 
